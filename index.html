@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>英語辞書アプリ</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
+    <script src="https://unpkg.com/tesseract.js@v4.0.2/dist/tesseract.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         .clickable-word { 
@@ -58,14 +58,31 @@
             border-radius: 8px;
             margin: 10px 0;
         }
+        .debug-info {
+            background-color: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
     <div class="max-w-4xl mx-auto p-8">
         <h1 class="text-3xl font-bold text-gray-800 mb-6">
             <i class="fas fa-book mr-2"></i>
-            英語辞書アプリ
+            英語辞書アプリ（デバッグ版）
         </h1>
+
+        <!-- デバッグ情報表示エリア -->
+        <div id="debug-section" class="mb-6">
+            <div class="debug-info">
+                <div><strong>デバッグ情報:</strong></div>
+                <div id="debug-log">アプリを初期化中...</div>
+            </div>
+        </div>
 
         <!-- タブメニュー -->
         <div class="flex border-b mb-6">
@@ -96,6 +113,22 @@
                 <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-3"></i>
                 <p class="text-base text-gray-600 mb-2">ファイルをドロップするかクリック</p>
                 <p class="text-sm text-gray-500">対応形式: PNG, JPG, JPEG</p>
+            </div>
+            
+            <!-- 画像プレビューエリア -->
+            <div id="image-preview-area" class="mt-4 hidden">
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-medium text-gray-700 mb-3">選択された画像:</h3>
+                    <img id="image-preview" class="image-preview mx-auto" />
+                    <div class="mt-3 flex gap-3">
+                        <button id="process-image-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors font-medium">
+                            <i class="fas fa-text-width mr-2"></i>文字を抽出
+                        </button>
+                        <button id="cancel-image-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors font-medium">
+                            <i class="fas fa-times mr-2"></i>キャンセル
+                        </button>
+                    </div>
+                </div>
             </div>
             
             <!-- 隠された入力要素 -->
@@ -183,13 +216,66 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
         // Gemini API Key
         const GEMINI_API_KEY = 'AIzaSyDmc8isiXiQf9fZaO71l42Fte_2NPZXLG8';
         
+        // デバッグ関数
+        function debugLog(message) {
+            const debugElement = document.getElementById('debug-log');
+            if (debugElement) {
+                const timestamp = new Date().toLocaleTimeString();
+                debugElement.innerHTML += `<br>[${timestamp}] ${message}`;
+            }
+            console.log(`[DEBUG] ${message}`);
+        }
+        
         // 辞書アプリのメイン機能
         class DictionaryApp {
             constructor() {
                 this.currentText = '';
                 this.currentWord = '';
+                this.currentImageFile = null;
                 this.initializeElements();
                 this.setupEventListeners();
+                this.checkTesseractJS();
+            }
+            
+            checkTesseractJS() {
+                debugLog('Tesseract.js チェック開始');
+                
+                if (typeof Tesseract === 'undefined') {
+                    debugLog('❌ Tesseract.js が見つかりません');
+                    return;
+                }
+                
+                debugLog('✅ Tesseract.js が見つかりました');
+                debugLog(`Tesseract version: ${Tesseract.version || 'unknown'}`);
+                
+                // 簡単なテストを実行
+                this.testTesseract();
+            }
+            
+            async testTesseract() {
+                try {
+                    debugLog('Tesseract.js テスト実行中...');
+                    
+                    // 小さなテスト画像を作成
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 200;
+                    canvas.height = 50;
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, 200, 50);
+                    ctx.fillStyle = 'black';
+                    ctx.font = '20px Arial';
+                    ctx.fillText('Hello World', 10, 30);
+                    
+                    debugLog('テスト画像を作成しました');
+                    
+                    const result = await Tesseract.recognize(canvas, 'eng');
+                    debugLog(`テスト結果: "${result.data.text.trim()}"`);
+                    debugLog('✅ Tesseract.js は正常に動作しています');
+                    
+                } catch (error) {
+                    debugLog(`❌ Tesseract.js テスト失敗: ${error.message}`);
+                }
             }
             
             initializeElements() {
@@ -199,6 +285,10 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
                 this.galleryBtn = document.getElementById('gallery-btn');
                 this.cameraInput = document.getElementById('camera-input');
                 this.galleryInput = document.getElementById('gallery-input');
+                this.imagePreviewArea = document.getElementById('image-preview-area');
+                this.imagePreview = document.getElementById('image-preview');
+                this.processImageBtn = document.getElementById('process-image-btn');
+                this.cancelImageBtn = document.getElementById('cancel-image-btn');
                 this.fileTab = document.getElementById('file-tab');
                 this.textTab = document.getElementById('text-tab');
                 this.fileInputArea = document.getElementById('file-input-area');
@@ -218,9 +308,13 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
                 this.popupWord = document.getElementById('popup-word');
                 this.popupContent = document.getElementById('popup-content');
                 this.closePopup = document.getElementById('close-popup');
+                
+                debugLog('要素の初期化完了');
             }
 
             setupEventListeners() {
+                debugLog('イベントリスナー設定開始');
+                
                 // タブ切り替え
                 if (this.fileTab) this.fileTab.addEventListener('click', () => this.switchToFileMode());
                 if (this.textTab) this.textTab.addEventListener('click', () => this.switchToTextMode());
@@ -229,30 +323,56 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
                 if (this.cameraBtn) {
                     this.cameraBtn.addEventListener('click', (e) => {
                         e.preventDefault();
+                        debugLog('カメラボタンがクリックされました');
                         this.openCamera();
                     });
                 }
                 if (this.galleryBtn) {
                     this.galleryBtn.addEventListener('click', (e) => {
                         e.preventDefault();
+                        debugLog('ギャラリーボタンがクリックされました');
                         this.openGallery();
                     });
                 }
                 if (this.cameraInput) {
-                    this.cameraInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                    this.cameraInput.addEventListener('change', (e) => {
+                        debugLog('カメラ入力が変更されました');
+                        this.handleFileSelect(e);
+                    });
                 }
                 if (this.galleryInput) {
-                    this.galleryInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                    this.galleryInput.addEventListener('change', (e) => {
+                        debugLog('ギャラリー入力が変更されました');
+                        this.handleFileSelect(e);
+                    });
                 }
                 
                 // PC用ファイル入力
                 if (this.uploadArea) {
                     this.uploadArea.addEventListener('click', () => {
+                        debugLog('アップロードエリアがクリックされました');
                         if (this.fileInput) this.fileInput.click();
                     });
                 }
                 if (this.fileInput) {
-                    this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                    this.fileInput.addEventListener('change', (e) => {
+                        debugLog('ファイル入力が変更されました');
+                        this.handleFileSelect(e);
+                    });
+                }
+                
+                // 画像処理ボタン
+                if (this.processImageBtn) {
+                    this.processImageBtn.addEventListener('click', () => {
+                        debugLog('画像処理ボタンがクリックされました');
+                        this.processImageWithOCR();
+                    });
+                }
+                if (this.cancelImageBtn) {
+                    this.cancelImageBtn.addEventListener('click', () => {
+                        debugLog('キャンセルボタンがクリックされました');
+                        this.cancelImageSelection();
+                    });
                 }
                 
                 // テキスト処理
@@ -281,6 +401,8 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
                 
                 // コピー機能
                 if (this.copyTextBtn) this.copyTextBtn.addEventListener('click', () => this.copyToClipboard());
+                
+                debugLog('イベントリスナー設定完了');
             }
             
             switchToFileMode() {
@@ -306,101 +428,141 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
             
             openCamera() {
                 try {
-                    console.log('カメラを開いています...');
+                    debugLog('カメラを開こうとしています...');
                     if (this.cameraInput) {
                         this.cameraInput.value = '';
                         this.cameraInput.click();
+                        debugLog('カメラ入力をクリックしました');
                     } else {
-                        alert('カメラ機能が利用できません');
+                        debugLog('❌ カメラ入力要素が見つかりません');
                     }
                 } catch (error) {
-                    console.error('カメラエラー:', error);
-                    alert('カメラ機能でエラーが発生しました');
+                    debugLog(`❌ カメラエラー: ${error.message}`);
                 }
             }
             
             openGallery() {
                 try {
-                    console.log('ギャラリーを開いています...');
+                    debugLog('ギャラリーを開こうとしています...');
                     if (this.galleryInput) {
                         this.galleryInput.value = '';
                         this.galleryInput.click();
+                        debugLog('ギャラリー入力をクリックしました');
                     } else {
-                        alert('ファイル選択機能が利用できません');
+                        debugLog('❌ ギャラリー入力要素が見つかりません');
                     }
                 } catch (error) {
-                    console.error('ギャラリーエラー:', error);
-                    alert('ファイル選択機能でエラーが発生しました');
+                    debugLog(`❌ ギャラリーエラー: ${error.message}`);
                 }
             }
             
             handleFileSelect(event) {
                 const file = event.target.files[0];
                 if (!file) {
-                    console.log('ファイルが選択されていません');
+                    debugLog('ファイルが選択されていません');
                     return;
                 }
                 
-                console.log('ファイル選択:', file.name, file.type, file.size);
+                debugLog(`ファイル選択: ${file.name}, タイプ: ${file.type}, サイズ: ${file.size} bytes`);
                 
                 if (!file.type.startsWith('image/')) {
+                    debugLog('❌ 画像ファイルではありません');
                     alert('画像ファイル（PNG, JPG, JPEG）を選択してください。');
                     return;
                 }
                 
-                // 直接OCR処理を開始
-                this.processImageWithOCR(file);
+                this.currentImageFile = file;
+                this.showImagePreview(file);
             }
             
-            async processImageWithOCR(file) {
-                console.log('OCR処理開始:', file.name, file.type);
-                this.showProgress('画像から文字を認識中...', 'OCRエンジンを初期化しています...');
+            showImagePreview(file) {
+                debugLog('画像プレビューを表示中...');
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    if (this.imagePreview) {
+                        this.imagePreview.src = e.target.result;
+                        debugLog('画像プレビューを設定しました');
+                    }
+                    if (this.imagePreviewArea) {
+                        this.imagePreviewArea.classList.remove('hidden');
+                        debugLog('画像プレビューエリアを表示しました');
+                    }
+                };
+                reader.onerror = (e) => {
+                    debugLog(`❌ ファイル読み込みエラー: ${e.target.error}`);
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            cancelImageSelection() {
+                debugLog('画像選択をキャンセル中...');
+                this.currentImageFile = null;
+                if (this.imagePreviewArea) {
+                    this.imagePreviewArea.classList.add('hidden');
+                }
+                // 入力フィールドをクリア
+                if (this.fileInput) this.fileInput.value = '';
+                if (this.cameraInput) this.cameraInput.value = '';
+                if (this.galleryInput) this.galleryInput.value = '';
+                debugLog('画像選択をキャンセルしました');
+            }
+            
+            async processImageWithOCR() {
+                if (!this.currentImageFile) {
+                    debugLog('❌ 処理する画像ファイルがありません');
+                    alert('画像が選択されていません。');
+                    return;
+                }
+                
+                debugLog(`OCR処理開始: ${this.currentImageFile.name}`);
+                this.showProgress('OCRで文字を認識中...', 'Tesseract.jsを初期化しています...');
                 
                 try {
-                    // Tesseract.jsが読み込まれているか確認
                     if (typeof Tesseract === 'undefined') {
-                        throw new Error('OCRライブラリが読み込まれていません');
+                        throw new Error('Tesseract.js ライブラリが読み込まれていません');
                     }
                     
-                    console.log('Tesseract.js バージョン:', Tesseract);
+                    debugLog('Tesseract.recognize を実行中...');
                     
-                    // OCR処理実行
                     const result = await Tesseract.recognize(
-                        file,
+                        this.currentImageFile,
                         'eng',
                         {
                             logger: (m) => {
-                                console.log('OCR ログ:', m);
+                                debugLog(`OCR ログ: ${m.status} - ${Math.round(m.progress * 100)}%`);
                                 if (m.status === 'recognizing text') {
                                     const progress = Math.round(m.progress * 100);
-                                    this.updateProgress(progress, '画像から文字を認識中...', `処理進捗: ${progress}%`);
+                                    this.updateProgress(progress, 'OCRで文字を認識中...', `処理進捗: ${progress}%`);
                                 } else if (m.status) {
-                                    this.updateProgress(50, '画像から文字を認識中...', `ステータス: ${m.status}`);
+                                    this.updateProgress(50, 'OCRで文字を認識中...', `ステータス: ${m.status}`);
                                 }
                             }
                         }
                     );
                     
-                    console.log('OCR完了 - 信頼度:', result.data.confidence);
-                    console.log('認識テキスト:', result.data.text);
+                    debugLog(`OCR完了 - 信頼度: ${result.data.confidence}%`);
+                    debugLog(`認識テキスト長: ${result.data.text.length} 文字`);
+                    debugLog(`認識テキスト: "${result.data.text}"`);
                     
                     const extractedText = result.data.text.trim();
                     
                     if (extractedText && extractedText.length > 0) {
-                        // 成功
+                        debugLog('✅ テキスト抽出成功');
                         this.updateProgress(100, '文字認識完了！', `信頼度: ${Math.round(result.data.confidence)}%`);
                         setTimeout(() => {
                             this.displayExtractedText(extractedText);
+                            this.cancelImageSelection();
                         }, 1000);
                     } else {
-                        // 文字が認識されなかった
+                        debugLog('❌ 空のテキストが返されました');
                         alert('画像から文字を認識できませんでした。\n\n以下を確認してください：\n- 画像が鮮明か\n- 文字が読みやすいか\n- 英語の文字が含まれているか');
                         this.hideProgress();
                     }
                     
                 } catch (error) {
-                    console.error('OCR処理エラー:', error);
-                    alert(`OCR処理に失敗しました：\n${error.message}\n\n別の画像でお試しください。`);
+                    debugLog(`❌ OCR処理エラー: ${error.message}`);
+                    debugLog(`エラースタック: ${error.stack}`);
+                    alert(`OCR処理に失敗しました：\n${error.message}\n\nブラウザの開発者ツールで詳細を確認してください。`);
                     this.hideProgress();
                 }
             }
@@ -637,21 +799,20 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
         
         // アプリケーション初期化
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('アプリ初期化開始');
-            
-            // Tesseract.jsが読み込まれているか確認
-            if (typeof Tesseract !== 'undefined') {
-                console.log('✅ Tesseract.js が正常に読み込まれました');
-            } else {
-                console.error('❌ Tesseract.js の読み込みに失敗しました');
-            }
+            debugLog('DOMContentLoaded イベント発生');
+            debugLog('アプリケーションを初期化中...');
             
             const app = new DictionaryApp();
             window.dictionaryApp = app;
             
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.getVoices();
+                debugLog('音声合成機能が利用可能です');
+            } else {
+                debugLog('音声合成機能は利用できません');
             }
+            
+            debugLog('アプリケーション初期化完了');
         });
     </script>
 </body>
