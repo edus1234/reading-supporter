@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -19,6 +19,38 @@
         }
         #dictionary-popup {
             z-index: 9999;
+        }
+        /* 辞書表示の改善 */
+        .dictionary-content {
+            font-size: 16px;
+            line-height: 1.4;
+        }
+        .pronunciation span {
+            font-size: 20px;
+        }
+        .pos-header {
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+        .definition {
+            margin-bottom: 12px;
+        }
+        .example {
+            margin-left: 28px;
+            margin-bottom: 6px;
+            padding: 8px;
+        }
+        .translation {
+            margin-left: 28px;
+            margin-bottom: 8px;
+        }
+        .info-item {
+            margin-bottom: 8px;
+            padding: 8px;
+        }
+        .target-word {
+            font-weight: bold;
+            color: #1d4ed8;
         }
     </style>
 </head>
@@ -60,10 +92,10 @@
                 <p class="text-sm text-gray-500">対応形式: PDF, PNG, JPG, JPEG</p>
             </div>
             
-            <!-- 隠された入力要素 -->
-            <input type="file" id="file-input" class="hidden" accept=".pdf,.png,.jpg,.jpeg">
+            <!-- 隠された入力要素 - スマホ対応を強化 -->
+            <input type="file" id="file-input" class="hidden" accept="image/*,.pdf">
             <input type="file" id="camera-input" class="hidden" accept="image/*" capture="environment">
-            <input type="file" id="gallery-input" class="hidden" accept="image/*">
+            <input type="file" id="gallery-input" class="hidden" accept="image/*" multiple>
         </div>
 
         <!-- テキスト入力エリア -->
@@ -131,7 +163,7 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
     <div id="dictionary-popup" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             <div class="flex justify-between items-center p-6 border-b">
-                <h3 id="popup-word" class="text-2xl font-bold text-gray-800"></h3>
+                <h3 id="popup-word" class="text-3xl font-bold text-gray-800"></h3>
                 <button id="close-popup" class="text-gray-500 hover:text-gray-700 text-3xl font-bold">&times;</button>
             </div>
             <div id="popup-content" class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
@@ -148,6 +180,7 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
         class DictionaryApp {
             constructor() {
                 this.currentText = '';
+                this.currentWord = '';
                 this.initializeElements();
                 this.setupEventListeners();
             }
@@ -184,17 +217,47 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
                 if (this.fileTab) this.fileTab.addEventListener('click', () => this.switchToFileMode());
                 if (this.textTab) this.textTab.addEventListener('click', () => this.switchToTextMode());
                 
-                // スマホ用ファイル入力
-                if (this.cameraBtn) this.cameraBtn.addEventListener('click', () => this.openCamera());
-                if (this.galleryBtn) this.galleryBtn.addEventListener('click', () => this.openGallery());
-                if (this.cameraInput) this.cameraInput.addEventListener('change', (e) => this.handleFileSelect(e));
-                if (this.galleryInput) this.galleryInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                // スマホ用ファイル入力（修正版）
+                if (this.cameraBtn) {
+                    this.cameraBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log('カメラボタンクリック');
+                        this.openCamera();
+                    });
+                }
+                if (this.galleryBtn) {
+                    this.galleryBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log('ギャラリーボタンクリック');
+                        this.openGallery();
+                    });
+                }
+                if (this.cameraInput) {
+                    this.cameraInput.addEventListener('change', (e) => {
+                        console.log('カメラ入力変更', e.target.files);
+                        this.handleFileSelect(e);
+                    });
+                }
+                if (this.galleryInput) {
+                    this.galleryInput.addEventListener('change', (e) => {
+                        console.log('ギャラリー入力変更', e.target.files);
+                        this.handleFileSelect(e);
+                    });
+                }
                 
                 // PC用ファイル入力
-                if (this.uploadArea) this.uploadArea.addEventListener('click', () => {
-                    if (this.fileInput) this.fileInput.click();
-                });
-                if (this.fileInput) this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                if (this.uploadArea) {
+                    this.uploadArea.addEventListener('click', () => {
+                        console.log('アップロードエリアクリック');
+                        if (this.fileInput) this.fileInput.click();
+                    });
+                }
+                if (this.fileInput) {
+                    this.fileInput.addEventListener('change', (e) => {
+                        console.log('ファイル入力変更', e.target.files);
+                        this.handleFileSelect(e);
+                    });
+                }
                 
                 // テキスト処理
                 if (this.processTextBtn) this.processTextBtn.addEventListener('click', () => this.processInputText());
@@ -246,45 +309,68 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
             }
             
             openCamera() {
-                console.log('カメラボタンがクリックされました');
-                if (this.cameraInput) {
-                    this.cameraInput.click();
-                } else {
-                    alert('カメラ機能がサポートされていません');
+                try {
+                    console.log('カメラ機能を開いています...');
+                    if (this.cameraInput) {
+                        this.cameraInput.value = '';  // 前の値をクリア
+                        this.cameraInput.click();
+                    } else {
+                        alert('カメラ機能が利用できません');
+                    }
+                } catch (error) {
+                    console.error('カメラエラー:', error);
+                    alert('カメラ機能でエラーが発生しました: ' + error.message);
                 }
             }
             
             openGallery() {
-                console.log('ギャラリーボタンがクリックされました');
-                if (this.galleryInput) {
-                    this.galleryInput.click();
-                } else {
-                    alert('ファイル選択機能がサポートされていません');
+                try {
+                    console.log('ギャラリー機能を開いています...');
+                    if (this.galleryInput) {
+                        this.galleryInput.value = '';  // 前の値をクリア
+                        this.galleryInput.click();
+                    } else {
+                        alert('ファイル選択機能が利用できません');
+                    }
+                } catch (error) {
+                    console.error('ギャラリーエラー:', error);
+                    alert('ファイル選択機能でエラーが発生しました: ' + error.message);
                 }
             }
             
             handleFileSelect(event) {
-                console.log('ファイルが選択されました', event.target.files);
+                console.log('ファイル処理開始', event.target.files);
                 const file = event.target.files[0];
-                if (!file) return;
+                if (!file) {
+                    console.log('ファイルが選択されていません');
+                    return;
+                }
                 
+                console.log('選択されたファイル:', file.name, file.type, file.size);
                 this.showProgress('ファイルを処理中...');
                 
                 if (file.type.startsWith('image/')) {
                     this.processImageFile(file);
                 } else {
-                    alert('現在、画像ファイル（PNG, JPG, JPEG）のみ対応しています。');
+                    alert('現在、画像ファイル（PNG, JPG, JPEG）のみ対応しています。選択されたファイル: ' + file.type);
                     this.hideProgress();
                 }
             }
             
             processImageFile(file) {
+                console.log('画像ファイルを処理中:', file.name);
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    console.log('画像読み込み完了');
                     setTimeout(() => {
-                        const sampleText = "This is a sample text extracted from the image. Machine learning and artificial intelligence are transformative technologies that help us understand complex data patterns.";
+                        const sampleText = "This is a sample text extracted from the image. Machine learning and artificial intelligence are transformative technologies that help us understand complex data patterns and make better decisions.";
                         this.displayExtractedText(sampleText);
                     }, 2000);
+                };
+                reader.onerror = (e) => {
+                    console.error('ファイル読み込みエラー:', e);
+                    alert('ファイルの読み込みに失敗しました');
+                    this.hideProgress();
                 };
                 reader.readAsDataURL(file);
             }
@@ -342,6 +428,7 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
             async showDictionary(word) {
                 if (!this.dictionaryPopup || !this.popupWord || !this.popupContent) return;
                 
+                this.currentWord = word;
                 this.popupWord.textContent = word;
                 this.popupContent.innerHTML = '<div class="flex justify-center p-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
                 this.dictionaryPopup.classList.remove('hidden');
@@ -405,21 +492,21 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
             
             displayDictionary(dictText, word) {
                 const html = `
-                    <div class="dictionary-layout space-y-4">
+                    <div class="dictionary-layout">
                         <div class="flex items-center justify-between mb-4 pb-3 border-b-2 border-blue-200">
-                            <h3 class="text-2xl font-bold text-gray-800">${word}</h3>
+                            <h3 class="text-3xl font-bold text-gray-800">${word}</h3>
                             <button onclick="window.dictionaryApp.speakWord('${word}')" 
-                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2">
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-lg font-medium flex items-center space-x-2">
                                 <span>🔊</span>
                                 <span>音声再生</span>
                             </button>
                         </div>
                         
-                        <div class="dictionary-content">
+                        <div class="dictionary-content text-base">
                             ${this.formatDictionary(dictText)}
                         </div>
                         
-                        <div class="bg-gray-100 rounded p-2 mt-4 text-xs text-gray-600">
+                        <div class="bg-gray-100 rounded p-2 mt-4 text-sm text-gray-600">
                             🤖 Powered by Gemini AI
                         </div>
                     </div>
@@ -429,36 +516,48 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
             }
             
             formatDictionary(text) {
+                // 発音記号の抽出
                 let formatted = text.replace(
                     /発音記号\s*[:：]?\s*\[([^\]]+)\]/g, 
-                    '<div class="pronunciation mb-4 text-center"><span class="text-xl font-mono text-blue-600 bg-blue-50 px-3 py-1 rounded">/$1/</span></div>'
+                    '<div class="pronunciation mb-3 text-center"><span class="text-xl font-mono text-blue-600 bg-blue-50 px-3 py-2 rounded">/$1/</span></div>'
                 );
                 
+                // 品詞セクションのフォーマット
                 formatted = formatted.replace(
                     /【([^】]+)】/g, 
-                    '<div class="pos-header mt-6 mb-3"><span class="inline-block bg-blue-600 text-white px-3 py-1 rounded font-medium text-sm">$1</span></div>'
+                    '<div class="pos-header"><span class="inline-block bg-blue-600 text-white px-3 py-2 rounded font-medium text-lg">$1</span></div>'
                 );
                 
+                // 定義番号のフォーマット
                 formatted = formatted.replace(
                     /^(\d+)\.\s*(.+)$/gm, 
-                    '<div class="definition flex mb-4"><div class="definition-number mr-4"><span class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-600 rounded-full text-sm font-semibold">$1</span></div><div class="definition-content flex-1"><div class="meaning mb-2"><span class="text-gray-900 font-medium">$2</span></div></div></div>'
+                    '<div class="definition flex"><div class="definition-number mr-3"><span class="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full text-lg font-semibold">$1</span></div><div class="definition-content flex-1"><div class="meaning"><span class="text-gray-900 font-medium text-lg">$2</span></div></div></div>'
                 );
                 
+                // 例文のフォーマット（ターゲット単語を太字にする）
                 formatted = formatted.replace(
                     /例文:\s*(.+)/g,
-                    '<div class="example bg-gray-50 p-3 rounded-md ml-11 mb-2"><div class="text-gray-700 italic text-sm">$1</div></div>'
+                    (match, sentence) => {
+                        const targetWord = this.currentWord;
+                        const regex = new RegExp(`\\b${targetWord}\\b`, 'gi');
+                        const highlightedSentence = sentence.replace(regex, `<span class="target-word">${targetWord}</span>`);
+                        return `<div class="example bg-gray-50 rounded-md"><div class="text-gray-700 italic text-base">${highlightedSentence}</div></div>`;
+                    }
                 );
                 
+                // 訳のフォーマット
                 formatted = formatted.replace(
                     /訳:\s*(.+)/g,
-                    '<div class="translation ml-11 mb-3"><div class="text-gray-600 text-sm"><span class="text-blue-500">→</span> $1</div></div>'
+                    '<div class="translation"><div class="text-gray-600 text-base"><span class="text-blue-500 text-lg">→</span> $1</div></div>'
                 );
                 
+                // その他の情報
                 formatted = formatted.replace(
                     /(語源|類義語|対義語|コロケーション):\s*(.+)/g,
-                    '<div class="info-item p-3 bg-gray-50 rounded mb-3"><div class="font-medium text-gray-700 mb-1">$1</div><div class="text-sm text-gray-600">$2</div></div>'
+                    '<div class="info-item bg-gray-50 rounded"><div class="font-medium text-gray-700 text-base mb-1">$1</div><div class="text-gray-600 text-base">$2</div></div>'
                 );
                 
+                // 改行をHTMLに変換
                 formatted = formatted.replace(/\n/g, '<br>');
                 
                 return formatted;
