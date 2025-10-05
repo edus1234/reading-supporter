@@ -1,12 +1,10 @@
-  <!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>英語辞書アプリ</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         .clickable-word { 
@@ -77,7 +75,10 @@
                 <textarea 
                     id="text-area" 
                     class="w-full h-40 p-3 border border-gray-300 rounded-md resize-vertical focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="ここに英語テキストを貼り付けるか、直接入力してください...&#10;&#10;例：&#10;Artificial Intelligence (AI) has become one of the most transformative technologies of our time."
+                    placeholder="ここに英語テキストを貼り付けるか、直接入力してください...
+
+例：
+Artificial Intelligence (AI) has become one of the most transformative technologies of our time."
                 ></textarea>
                 <div class="flex gap-3 mt-4">
                     <button id="process-text-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors font-medium">
@@ -140,7 +141,7 @@
     </div>
 
     <script>
-        // Gemini API Key - 実際のアプリでは環境変数から取得
+        // Gemini API Key
         const GEMINI_API_KEY = 'AIzaSyDmc8isiXiQf9fZaO71l42Fte_2NPZXLG8';
         
         // 辞書アプリのメイン機能
@@ -149,10 +150,6 @@
                 this.currentText = '';
                 this.initializeElements();
                 this.setupEventListeners();
-                
-                if (window.pdfjsLib) {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                }
             }
             
             initializeElements() {
@@ -184,27 +181,29 @@
 
             setupEventListeners() {
                 // タブ切り替え
-                this.fileTab?.addEventListener('click', () => this.switchToFileMode());
-                this.textTab?.addEventListener('click', () => this.switchToTextMode());
+                if (this.fileTab) this.fileTab.addEventListener('click', () => this.switchToFileMode());
+                if (this.textTab) this.textTab.addEventListener('click', () => this.switchToTextMode());
                 
                 // スマホ用ファイル入力
-                this.cameraBtn?.addEventListener('click', () => this.openCamera());
-                this.galleryBtn?.addEventListener('click', () => this.openGallery());
-                this.cameraInput?.addEventListener('change', (e) => this.handleFileSelect(e));
-                this.galleryInput?.addEventListener('change', (e) => this.handleFileSelect(e));
+                if (this.cameraBtn) this.cameraBtn.addEventListener('click', () => this.openCamera());
+                if (this.galleryBtn) this.galleryBtn.addEventListener('click', () => this.openGallery());
+                if (this.cameraInput) this.cameraInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                if (this.galleryInput) this.galleryInput.addEventListener('change', (e) => this.handleFileSelect(e));
                 
                 // PC用ファイル入力
-                this.uploadArea?.addEventListener('click', () => this.fileInput?.click());
-                this.fileInput?.addEventListener('change', (e) => this.handleFileSelect(e));
+                if (this.uploadArea) this.uploadArea.addEventListener('click', () => {
+                    if (this.fileInput) this.fileInput.click();
+                });
+                if (this.fileInput) this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
                 
                 // テキスト処理
-                this.processTextBtn?.addEventListener('click', () => this.processInputText());
-                this.clearTextBtn?.addEventListener('click', () => this.clearTextArea());
-                this.sampleTextBtn?.addEventListener('click', () => this.loadSampleText());
+                if (this.processTextBtn) this.processTextBtn.addEventListener('click', () => this.processInputText());
+                if (this.clearTextBtn) this.clearTextBtn.addEventListener('click', () => this.clearTextArea());
+                if (this.sampleTextBtn) this.sampleTextBtn.addEventListener('click', () => this.loadSampleText());
                 
                 // ポップアップ
-                this.closePopup?.addEventListener('click', () => this.closeDictionaryPopup());
-                this.dictionaryPopup?.addEventListener('click', (e) => {
+                if (this.closePopup) this.closePopup.addEventListener('click', () => this.closeDictionaryPopup());
+                if (this.dictionaryPopup) this.dictionaryPopup.addEventListener('click', (e) => {
                     if (e.target === this.dictionaryPopup) this.closeDictionaryPopup();
                 });
                 
@@ -213,7 +212,7 @@
                     if (e.key === 'Escape') this.closeDictionaryPopup();
                 });
                 
-                // 単語クリック（イベント委譲）
+                // 単語クリック
                 document.addEventListener('click', (e) => {
                     if (e.target.classList.contains('clickable-word')) {
                         const word = e.target.getAttribute('data-word');
@@ -222,7 +221,7 @@
                 });
                 
                 // コピー機能
-                this.copyTextBtn?.addEventListener('click', () => this.copyToClipboard());
+                if (this.copyTextBtn) this.copyTextBtn.addEventListener('click', () => this.copyToClipboard());
             }
             
             switchToFileMode() {
@@ -241,11 +240,57 @@
                 this.fileTab.classList.add('border-transparent', 'text-gray-500');
                 this.textInputArea.classList.remove('hidden');
                 this.fileInputArea.classList.add('hidden');
-                setTimeout(() => this.textArea?.focus(), 100);
+                setTimeout(() => {
+                    if (this.textArea) this.textArea.focus();
+                }, 100);
+            }
+            
+            openCamera() {
+                console.log('カメラボタンがクリックされました');
+                if (this.cameraInput) {
+                    this.cameraInput.click();
+                } else {
+                    alert('カメラ機能がサポートされていません');
+                }
+            }
+            
+            openGallery() {
+                console.log('ギャラリーボタンがクリックされました');
+                if (this.galleryInput) {
+                    this.galleryInput.click();
+                } else {
+                    alert('ファイル選択機能がサポートされていません');
+                }
+            }
+            
+            handleFileSelect(event) {
+                console.log('ファイルが選択されました', event.target.files);
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                this.showProgress('ファイルを処理中...');
+                
+                if (file.type.startsWith('image/')) {
+                    this.processImageFile(file);
+                } else {
+                    alert('現在、画像ファイル（PNG, JPG, JPEG）のみ対応しています。');
+                    this.hideProgress();
+                }
+            }
+            
+            processImageFile(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    setTimeout(() => {
+                        const sampleText = "This is a sample text extracted from the image. Machine learning and artificial intelligence are transformative technologies that help us understand complex data patterns.";
+                        this.displayExtractedText(sampleText);
+                    }, 2000);
+                };
+                reader.readAsDataURL(file);
             }
             
             processInputText() {
-                const inputText = this.textArea?.value?.trim();
+                const inputText = this.textArea.value.trim();
                 if (!inputText) {
                     alert('テキストを入力してください。');
                     return;
@@ -261,14 +306,12 @@
                     this.textArea.value = '';
                     this.textArea.focus();
                 }
-                this.textSection?.classList.add('hidden');
+                if (this.textSection) this.textSection.classList.add('hidden');
                 this.currentText = '';
             }
             
             loadSampleText() {
-                const sampleText = `Artificial Intelligence (AI) has become one of the most transformative technologies of our time. Machine learning algorithms can analyze vast amounts of data to identify patterns and make predictions. Natural language processing enables computers to understand and generate human language.
-
-The applications of AI are diverse and growing rapidly. In healthcare, AI helps doctors diagnose diseases more accurately. In transportation, autonomous vehicles use AI to navigate safely. However, the development of AI also raises important ethical questions about privacy, bias, and transparency.`;
+                const sampleText = "Artificial Intelligence (AI) has become one of the most transformative technologies of our time. Machine learning algorithms can analyze vast amounts of data to identify patterns and make predictions. Natural language processing enables computers to understand and generate human language.\n\nThe applications of AI are diverse and growing rapidly. In healthcare, AI helps doctors diagnose diseases more accurately. In transportation, autonomous vehicles use AI to navigate safely. However, the development of AI also raises important ethical questions about privacy, bias, and transparency.";
 
                 if (this.textArea) {
                     this.textArea.value = sampleText;
@@ -278,51 +321,13 @@ The applications of AI are diverse and growing rapidly. In healthcare, AI helps 
                 }
             }
             
-            openCamera() {
-                this.cameraInput?.click();
-            }
-            
-            openGallery() {
-                this.galleryInput?.click();
-            }
-            
-            handleFileSelect(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                
-                this.showProgress('ファイルを処理中...');
-                
-                // 画像ファイルの場合はOCR処理（簡易版）
-                if (file.type.startsWith('image/')) {
-                    this.processImageFile(file);
-                } else {
-                    // PDFファイルなど
-                    alert('現在、画像ファイル（PNG, JPG, JPEG）のみ対応しています。');
-                    this.hideProgress();
-                }
-            }
-            
-            processImageFile(file) {
-                // 簡易OCR処理（実際のアプリではTesseract.jsなどを使用）
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    // ここでは簡易的にサンプルテキストを表示
-                    // 実際の実装ではOCRライブラリを使用
-                    setTimeout(() => {
-                        const sampleText = "This is a sample text extracted from the image. Machine learning and artificial intelligence are transformative technologies.";
-                        this.displayExtractedText(sampleText);
-                    }, 2000);
-                };
-                reader.readAsDataURL(file);
-            }
-            
             displayExtractedText(text) {
                 this.currentText = text;
                 const processedText = this.makeWordsClickable(text);
                 if (this.extractedText) {
                     this.extractedText.innerHTML = processedText;
                 }
-                this.textSection?.classList.remove('hidden');
+                if (this.textSection) this.textSection.classList.remove('hidden');
                 this.updateProgress(100, '完了！');
                 setTimeout(() => this.hideProgress(), 1000);
             }
@@ -383,7 +388,7 @@ The applications of AI are diverse and growing rapidly. In healthcare, AI helps 
                     
                     const data = await response.json();
                     
-                    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
                         this.displayDictionary(data.candidates[0].content.parts[0].text, word);
                     } else {
                         throw new Error('辞書情報を取得できませんでした');
@@ -424,43 +429,36 @@ The applications of AI are diverse and growing rapidly. In healthcare, AI helps 
             }
             
             formatDictionary(text) {
-                // 発音記号の抽出
                 let formatted = text.replace(
                     /発音記号\s*[:：]?\s*\[([^\]]+)\]/g, 
                     '<div class="pronunciation mb-4 text-center"><span class="text-xl font-mono text-blue-600 bg-blue-50 px-3 py-1 rounded">/$1/</span></div>'
                 );
                 
-                // 品詞セクションのフォーマット
                 formatted = formatted.replace(
                     /【([^】]+)】/g, 
                     '<div class="pos-header mt-6 mb-3"><span class="inline-block bg-blue-600 text-white px-3 py-1 rounded font-medium text-sm">$1</span></div>'
                 );
                 
-                // 定義番号のフォーマット
                 formatted = formatted.replace(
                     /^(\d+)\.\s*(.+)$/gm, 
                     '<div class="definition flex mb-4"><div class="definition-number mr-4"><span class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-600 rounded-full text-sm font-semibold">$1</span></div><div class="definition-content flex-1"><div class="meaning mb-2"><span class="text-gray-900 font-medium">$2</span></div></div></div>'
                 );
                 
-                // 例文のフォーマット
                 formatted = formatted.replace(
                     /例文:\s*(.+)/g,
                     '<div class="example bg-gray-50 p-3 rounded-md ml-11 mb-2"><div class="text-gray-700 italic text-sm">$1</div></div>'
                 );
                 
-                // 訳のフォーマット
                 formatted = formatted.replace(
                     /訳:\s*(.+)/g,
                     '<div class="translation ml-11 mb-3"><div class="text-gray-600 text-sm"><span class="text-blue-500">→</span> $1</div></div>'
                 );
                 
-                // その他の情報
                 formatted = formatted.replace(
                     /(語源|類義語|対義語|コロケーション):\s*(.+)/g,
                     '<div class="info-item p-3 bg-gray-50 rounded mb-3"><div class="font-medium text-gray-700 mb-1">$1</div><div class="text-sm text-gray-600">$2</div></div>'
                 );
                 
-                // 改行をHTMLに変換
                 formatted = formatted.replace(/\n/g, '<br>');
                 
                 return formatted;
@@ -479,7 +477,7 @@ The applications of AI are diverse and growing rapidly. In healthcare, AI helps 
             }
             
             closeDictionaryPopup() {
-                this.dictionaryPopup?.classList.add('hidden');
+                if (this.dictionaryPopup) this.dictionaryPopup.classList.add('hidden');
             }
             
             copyToClipboard() {
@@ -500,7 +498,7 @@ The applications of AI are diverse and growing rapidly. In healthcare, AI helps 
             }
             
             showProgress(message) {
-                this.progressSection?.classList.remove('hidden');
+                if (this.progressSection) this.progressSection.classList.remove('hidden');
                 this.updateProgress(0, message);
             }
             
@@ -510,7 +508,7 @@ The applications of AI are diverse and growing rapidly. In healthcare, AI helps 
             }
             
             hideProgress() {
-                this.progressSection?.classList.add('hidden');
+                if (this.progressSection) this.progressSection.classList.add('hidden');
             }
         }
         
@@ -519,7 +517,6 @@ The applications of AI are diverse and growing rapidly. In healthcare, AI helps 
             const app = new DictionaryApp();
             window.dictionaryApp = app;
             
-            // 音声合成の初期化
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.getVoices();
             }
