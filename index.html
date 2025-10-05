@@ -1,529 +1,529 @@
-     1	<!DOCTYPE html>
-     2	<html lang="ja">
-     3	<head>
-     4	    <meta charset="UTF-8">
-     5	    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-     6	    <title>英語辞書アプリ</title>
-     7	    <script src="https://cdn.tailwindcss.com"></script>
-     8	    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-     9	    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-    10	    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-    11	    <style>
-    12	        .clickable-word { 
-    13	            cursor: pointer; 
-    14	            color: blue; 
-    15	            text-decoration: underline;
-    16	            padding: 2px 4px;
-    17	            border-radius: 4px;
-    18	        }
-    19	        .clickable-word:hover { 
-    20	            background-color: yellow; 
-    21	        }
-    22	        #dictionary-popup {
-    23	            z-index: 9999;
-    24	        }
-    25	    </style>
-    26	</head>
-    27	<body class="bg-gray-100">
-    28	    <div class="max-w-4xl mx-auto p-8">
-    29	        <h1 class="text-3xl font-bold text-gray-800 mb-6">
-    30	            <i class="fas fa-book mr-2"></i>
-    31	            英語辞書アプリ
-    32	        </h1>
-    33	
-    34	        <!-- タブメニュー -->
-    35	        <div class="flex border-b mb-6">
-    36	            <button id="file-tab" class="px-4 py-2 border-b-2 border-blue-500 text-blue-600 bg-blue-50 font-medium">
-    37	                <i class="fas fa-upload mr-2"></i>ファイル
-    38	            </button>
-    39	            <button id="text-tab" class="px-4 py-2 border-b-2 border-transparent text-gray-500 font-medium">
-    40	                <i class="fas fa-edit mr-2"></i>テキスト
-    41	            </button>
-    42	        </div>
-    43	
-    44	        <!-- ファイル入力エリア -->
-    45	        <div id="file-input-area" class="mb-6">
-    46	            <!-- スマホ用ボタン -->
-    47	            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-    48	                <button id="camera-btn" class="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-lg transition-colors font-medium flex items-center justify-center space-x-2">
-    49	                    <i class="fas fa-camera text-xl"></i>
-    50	                    <span>カメラで撮影</span>
-    51	                </button>
-    52	                <button id="gallery-btn" class="bg-green-500 hover:bg-green-600 text-white p-4 rounded-lg transition-colors font-medium flex items-center justify-center space-x-2">
-    53	                    <i class="fas fa-images text-xl"></i>
-    54	                    <span>写真を選択</span>
-    55	                </button>
-    56	            </div>
-    57	            
-    58	            <!-- PC用ドラッグ&ドロップエリア -->
-    59	            <div id="upload-area" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
-    60	                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-3"></i>
-    61	                <p class="text-base text-gray-600 mb-2">ファイルをドロップするかクリック</p>
-    62	                <p class="text-sm text-gray-500">対応形式: PDF, PNG, JPG, JPEG</p>
-    63	            </div>
-    64	            
-    65	            <!-- 隠された入力要素 -->
-    66	            <input type="file" id="file-input" class="hidden" accept=".pdf,.png,.jpg,.jpeg">
-    67	            <input type="file" id="camera-input" class="hidden" accept="image/*" capture="environment">
-    68	            <input type="file" id="gallery-input" class="hidden" accept="image/*">
-    69	        </div>
-    70	
-    71	        <!-- テキスト入力エリア -->
-    72	        <div id="text-input-area" class="mb-6 hidden">
-    73	            <div class="bg-white rounded-lg shadow p-6">
-    74	                <label for="text-area" class="block text-lg font-medium text-gray-700 mb-3">
-    75	                    <i class="fas fa-keyboard mr-2"></i>英語テキストを貼り付けてください
-    76	                </label>
-    77	                <textarea 
-    78	                    id="text-area" 
-    79	                    class="w-full h-40 p-3 border border-gray-300 rounded-md resize-vertical focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-    80	                    placeholder="ここに英語テキストを貼り付けるか、直接入力してください...&#10;&#10;例：&#10;Artificial Intelligence (AI) has become one of the most transformative technologies of our time."
-    81	                ></textarea>
-    82	                <div class="flex gap-3 mt-4">
-    83	                    <button id="process-text-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors font-medium">
-    84	                        <i class="fas fa-play mr-2"></i>テキストを処理
-    85	                    </button>
-    86	                    <button id="clear-text-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors font-medium">
-    87	                        <i class="fas fa-trash mr-2"></i>クリア
-    88	                    </button>
-    89	                    <button id="sample-text-btn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-md transition-colors font-medium">
-    90	                        <i class="fas fa-file-alt mr-2"></i>サンプルテキスト
-    91	                    </button>
-    92	                </div>
-    93	            </div>
-    94	        </div>
-    95	
-    96	        <!-- プログレスセクション -->
-    97	        <div id="progress-section" class="mb-6 hidden">
-    98	            <div class="bg-white rounded-lg shadow p-6">
-    99	                <div class="flex items-center mb-3">
-   100	                    <i class="fas fa-cog fa-spin text-blue-500 mr-3"></i>
-   101	                    <span id="progress-text" class="text-lg font-medium">処理中...</span>
-   102	                </div>
-   103	                <div class="w-full bg-gray-200 rounded-full h-2">
-   104	                    <div id="progress-bar" class="bg-blue-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-   105	                </div>
-   106	            </div>
-   107	        </div>
-   108	
-   109	        <!-- テキスト表示セクション -->
-   110	        <div id="text-section" class="hidden">
-   111	            <div class="bg-white rounded-lg shadow">
-   112	                <div class="p-6 border-b">
-   113	                    <div class="flex justify-between items-center">
-   114	                        <h2 class="text-xl font-bold text-gray-800">
-   115	                            <i class="fas fa-file-text mr-2"></i>抽出されたテキスト
-   116	                        </h2>
-   117	                        <button id="copy-text-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium">
-   118	                            <i class="fas fa-copy mr-2"></i>テキストをコピー
-   119	                        </button>
-   120	                    </div>
-   121	                </div>
-   122	                <div class="p-6">
-   123	                    <div id="extracted-text" class="text-gray-700 leading-relaxed whitespace-pre-wrap"></div>
-   124	                </div>
-   125	            </div>
-   126	        </div>
-   127	    </div>
-   128	
-   129	    <!-- 辞書ポップアップ -->
-   130	    <div id="dictionary-popup" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-   131	        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-   132	            <div class="flex justify-between items-center p-6 border-b">
-   133	                <h3 id="popup-word" class="text-2xl font-bold text-gray-800"></h3>
-   134	                <button id="close-popup" class="text-gray-500 hover:text-gray-700 text-3xl font-bold">&times;</button>
-   135	            </div>
-   136	            <div id="popup-content" class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-   137	                <!-- 辞書内容がここに表示される -->
-   138	            </div>
-   139	        </div>
-   140	    </div>
-   141	
-   142	    <script>
-   143	        // Gemini API Key - 実際のアプリでは環境変数から取得
-   144	        const GEMINI_API_KEY = 'AIzaSyDmc8isiXiQf9fZaO71l42Fte_2NPZXLG8';
-   145	        
-   146	        // 辞書アプリのメイン機能
-   147	        class DictionaryApp {
-   148	            constructor() {
-   149	                this.currentText = '';
-   150	                this.initializeElements();
-   151	                this.setupEventListeners();
-   152	                
-   153	                if (window.pdfjsLib) {
-   154	                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-   155	                }
-   156	            }
-   157	            
-   158	            initializeElements() {
-   159	                this.uploadArea = document.getElementById('upload-area');
-   160	                this.fileInput = document.getElementById('file-input');
-   161	                this.cameraBtn = document.getElementById('camera-btn');
-   162	                this.galleryBtn = document.getElementById('gallery-btn');
-   163	                this.cameraInput = document.getElementById('camera-input');
-   164	                this.galleryInput = document.getElementById('gallery-input');
-   165	                this.fileTab = document.getElementById('file-tab');
-   166	                this.textTab = document.getElementById('text-tab');
-   167	                this.fileInputArea = document.getElementById('file-input-area');
-   168	                this.textInputArea = document.getElementById('text-input-area');
-   169	                this.textArea = document.getElementById('text-area');
-   170	                this.processTextBtn = document.getElementById('process-text-btn');
-   171	                this.clearTextBtn = document.getElementById('clear-text-btn');
-   172	                this.sampleTextBtn = document.getElementById('sample-text-btn');
-   173	                this.progressSection = document.getElementById('progress-section');
-   174	                this.progressBar = document.getElementById('progress-bar');
-   175	                this.progressText = document.getElementById('progress-text');
-   176	                this.textSection = document.getElementById('text-section');
-   177	                this.extractedText = document.getElementById('extracted-text');
-   178	                this.copyTextBtn = document.getElementById('copy-text-btn');
-   179	                this.dictionaryPopup = document.getElementById('dictionary-popup');
-   180	                this.popupWord = document.getElementById('popup-word');
-   181	                this.popupContent = document.getElementById('popup-content');
-   182	                this.closePopup = document.getElementById('close-popup');
-   183	            }
-   184	
-   185	            setupEventListeners() {
-   186	                // タブ切り替え
-   187	                this.fileTab?.addEventListener('click', () => this.switchToFileMode());
-   188	                this.textTab?.addEventListener('click', () => this.switchToTextMode());
-   189	                
-   190	                // スマホ用ファイル入力
-   191	                this.cameraBtn?.addEventListener('click', () => this.openCamera());
-   192	                this.galleryBtn?.addEventListener('click', () => this.openGallery());
-   193	                this.cameraInput?.addEventListener('change', (e) => this.handleFileSelect(e));
-   194	                this.galleryInput?.addEventListener('change', (e) => this.handleFileSelect(e));
-   195	                
-   196	                // PC用ファイル入力
-   197	                this.uploadArea?.addEventListener('click', () => this.fileInput?.click());
-   198	                this.fileInput?.addEventListener('change', (e) => this.handleFileSelect(e));
-   199	                
-   200	                // テキスト処理
-   201	                this.processTextBtn?.addEventListener('click', () => this.processInputText());
-   202	                this.clearTextBtn?.addEventListener('click', () => this.clearTextArea());
-   203	                this.sampleTextBtn?.addEventListener('click', () => this.loadSampleText());
-   204	                
-   205	                // ポップアップ
-   206	                this.closePopup?.addEventListener('click', () => this.closeDictionaryPopup());
-   207	                this.dictionaryPopup?.addEventListener('click', (e) => {
-   208	                    if (e.target === this.dictionaryPopup) this.closeDictionaryPopup();
-   209	                });
-   210	                
-   211	                // ESCキー
-   212	                document.addEventListener('keydown', (e) => {
-   213	                    if (e.key === 'Escape') this.closeDictionaryPopup();
-   214	                });
-   215	                
-   216	                // 単語クリック（イベント委譲）
-   217	                document.addEventListener('click', (e) => {
-   218	                    if (e.target.classList.contains('clickable-word')) {
-   219	                        const word = e.target.getAttribute('data-word');
-   220	                        if (word) this.showDictionary(word);
-   221	                    }
-   222	                });
-   223	                
-   224	                // コピー機能
-   225	                this.copyTextBtn?.addEventListener('click', () => this.copyToClipboard());
-   226	            }
-   227	            
-   228	            switchToFileMode() {
-   229	                this.fileTab.classList.add('border-blue-500', 'text-blue-600', 'bg-blue-50');
-   230	                this.fileTab.classList.remove('border-transparent', 'text-gray-500');
-   231	                this.textTab.classList.remove('border-blue-500', 'text-blue-600', 'bg-blue-50');
-   232	                this.textTab.classList.add('border-transparent', 'text-gray-500');
-   233	                this.fileInputArea.classList.remove('hidden');
-   234	                this.textInputArea.classList.add('hidden');
-   235	            }
-   236	            
-   237	            switchToTextMode() {
-   238	                this.textTab.classList.add('border-blue-500', 'text-blue-600', 'bg-blue-50');
-   239	                this.textTab.classList.remove('border-transparent', 'text-gray-500');
-   240	                this.fileTab.classList.remove('border-blue-500', 'text-blue-600', 'bg-blue-50');
-   241	                this.fileTab.classList.add('border-transparent', 'text-gray-500');
-   242	                this.textInputArea.classList.remove('hidden');
-   243	                this.fileInputArea.classList.add('hidden');
-   244	                setTimeout(() => this.textArea?.focus(), 100);
-   245	            }
-   246	            
-   247	            processInputText() {
-   248	                const inputText = this.textArea?.value?.trim();
-   249	                if (!inputText) {
-   250	                    alert('テキストを入力してください。');
-   251	                    return;
-   252	                }
-   253	                this.showProgress('テキストを処理中...');
-   254	                setTimeout(() => {
-   255	                    this.displayExtractedText(inputText);
-   256	                }, 500);
-   257	            }
-   258	            
-   259	            clearTextArea() {
-   260	                if (this.textArea) {
-   261	                    this.textArea.value = '';
-   262	                    this.textArea.focus();
-   263	                }
-   264	                this.textSection?.classList.add('hidden');
-   265	                this.currentText = '';
-   266	            }
-   267	            
-   268	            loadSampleText() {
-   269	                const sampleText = `Artificial Intelligence (AI) has become one of the most transformative technologies of our time. Machine learning algorithms can analyze vast amounts of data to identify patterns and make predictions. Natural language processing enables computers to understand and generate human language.
-   270	
-   271	The applications of AI are diverse and growing rapidly. In healthcare, AI helps doctors diagnose diseases more accurately. In transportation, autonomous vehicles use AI to navigate safely. However, the development of AI also raises important ethical questions about privacy, bias, and transparency.`;
-   272	
-   273	                if (this.textArea) {
-   274	                    this.textArea.value = sampleText;
-   275	                    if (confirm('サンプルテキストを読み込みました。すぐに処理を開始しますか？')) {
-   276	                        this.processInputText();
-   277	                    }
-   278	                }
-   279	            }
-   280	            
-   281	            openCamera() {
-   282	                this.cameraInput?.click();
-   283	            }
-   284	            
-   285	            openGallery() {
-   286	                this.galleryInput?.click();
-   287	            }
-   288	            
-   289	            handleFileSelect(event) {
-   290	                const file = event.target.files[0];
-   291	                if (!file) return;
-   292	                
-   293	                this.showProgress('ファイルを処理中...');
-   294	                
-   295	                // 画像ファイルの場合はOCR処理（簡易版）
-   296	                if (file.type.startsWith('image/')) {
-   297	                    this.processImageFile(file);
-   298	                } else {
-   299	                    // PDFファイルなど
-   300	                    alert('現在、画像ファイル（PNG, JPG, JPEG）のみ対応しています。');
-   301	                    this.hideProgress();
-   302	                }
-   303	            }
-   304	            
-   305	            processImageFile(file) {
-   306	                // 簡易OCR処理（実際のアプリではTesseract.jsなどを使用）
-   307	                const reader = new FileReader();
-   308	                reader.onload = (e) => {
-   309	                    // ここでは簡易的にサンプルテキストを表示
-   310	                    // 実際の実装ではOCRライブラリを使用
-   311	                    setTimeout(() => {
-   312	                        const sampleText = "This is a sample text extracted from the image. Machine learning and artificial intelligence are transformative technologies.";
-   313	                        this.displayExtractedText(sampleText);
-   314	                    }, 2000);
-   315	                };
-   316	                reader.readAsDataURL(file);
-   317	            }
-   318	            
-   319	            displayExtractedText(text) {
-   320	                this.currentText = text;
-   321	                const processedText = this.makeWordsClickable(text);
-   322	                if (this.extractedText) {
-   323	                    this.extractedText.innerHTML = processedText;
-   324	                }
-   325	                this.textSection?.classList.remove('hidden');
-   326	                this.updateProgress(100, '完了！');
-   327	                setTimeout(() => this.hideProgress(), 1000);
-   328	            }
-   329	            
-   330	            makeWordsClickable(text) {
-   331	                const wordPattern = /\b[a-zA-Z]{2,}\b/g;
-   332	                return text.replace(wordPattern, (word) => {
-   333	                    return `<span class="clickable-word" data-word="${word.toLowerCase()}">${word}</span>`;
-   334	                });
-   335	            }
-   336	            
-   337	            async showDictionary(word) {
-   338	                if (!this.dictionaryPopup || !this.popupWord || !this.popupContent) return;
-   339	                
-   340	                this.popupWord.textContent = word;
-   341	                this.popupContent.innerHTML = '<div class="flex justify-center p-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
-   342	                this.dictionaryPopup.classList.remove('hidden');
-   343	                
-   344	                try {
-   345	                    const prompt = `英単語「${word}」の辞書情報を以下の形式で出力してください：
-   346	
-   347	発音記号: [IPA発音記号]
-   348	
-   349	【名詞】（該当する場合のみ）
-   350	1. 意味1の日本語訳
-   351	   例文: English example sentence.
-   352	   訳: 日本語訳
-   353	
-   354	【動詞】（該当する場合のみ）
-   355	1. 動詞の意味の日本語訳
-   356	   例文: Verb example sentence.
-   357	   訳: 日本語訳
-   358	
-   359	【形容詞】（該当する場合のみ）
-   360	1. 形容詞の意味の日本語訳
-   361	   例文: Adjective example sentence.
-   362	   訳: 日本語訳
-   363	
-   364	語源: 単語の語源
-   365	類義語: synonym1, synonym2
-   366	対義語: antonym1, antonym2
-   367	
-   368	辞書らしく簡潔で正確な情報のみを出力してください。`;
-   369	
-   370	                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-   371	                        method: 'POST',
-   372	                        headers: { 'Content-Type': 'application/json' },
-   373	                        body: JSON.stringify({
-   374	                            contents: [{ parts: [{ text: prompt }] }],
-   375	                            generationConfig: {
-   376	                                temperature: 0.7,
-   377	                                topK: 40,
-   378	                                topP: 0.95,
-   379	                                maxOutputTokens: 800
-   380	                            }
-   381	                        })
-   382	                    });
-   383	                    
-   384	                    const data = await response.json();
-   385	                    
-   386	                    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-   387	                        this.displayDictionary(data.candidates[0].content.parts[0].text, word);
-   388	                    } else {
-   389	                        throw new Error('辞書情報を取得できませんでした');
-   390	                    }
-   391	                } catch (error) {
-   392	                    this.popupContent.innerHTML = `
-   393	                        <div class="text-red-600 p-4">
-   394	                            <p>❌ 辞書情報の取得に失敗しました</p>
-   395	                            <p class="text-sm mt-2">${error.message}</p>
-   396	                        </div>
-   397	                    `;
-   398	                }
-   399	            }
-   400	            
-   401	            displayDictionary(dictText, word) {
-   402	                const html = `
-   403	                    <div class="dictionary-layout space-y-4">
-   404	                        <div class="flex items-center justify-between mb-4 pb-3 border-b-2 border-blue-200">
-   405	                            <h3 class="text-2xl font-bold text-gray-800">${word}</h3>
-   406	                            <button onclick="window.dictionaryApp.speakWord('${word}')" 
-   407	                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2">
-   408	                                <span>🔊</span>
-   409	                                <span>音声再生</span>
-   410	                            </button>
-   411	                        </div>
-   412	                        
-   413	                        <div class="dictionary-content">
-   414	                            ${this.formatDictionary(dictText)}
-   415	                        </div>
-   416	                        
-   417	                        <div class="bg-gray-100 rounded p-2 mt-4 text-xs text-gray-600">
-   418	                            🤖 Powered by Gemini AI
-   419	                        </div>
-   420	                    </div>
-   421	                `;
-   422	                
-   423	                this.popupContent.innerHTML = html;
-   424	            }
-   425	            
-   426	            formatDictionary(text) {
-   427	                // 発音記号の抽出
-   428	                let formatted = text.replace(
-   429	                    /発音記号\s*[:：]?\s*\[([^\]]+)\]/g, 
-   430	                    '<div class="pronunciation mb-4 text-center"><span class="text-xl font-mono text-blue-600 bg-blue-50 px-3 py-1 rounded">/$1/</span></div>'
-   431	                );
-   432	                
-   433	                // 品詞セクションのフォーマット
-   434	                formatted = formatted.replace(
-   435	                    /【([^】]+)】/g, 
-   436	                    '<div class="pos-header mt-6 mb-3"><span class="inline-block bg-blue-600 text-white px-3 py-1 rounded font-medium text-sm">$1</span></div>'
-   437	                );
-   438	                
-   439	                // 定義番号のフォーマット
-   440	                formatted = formatted.replace(
-   441	                    /^(\d+)\.\s*(.+)$/gm, 
-   442	                    '<div class="definition flex mb-4"><div class="definition-number mr-4"><span class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-600 rounded-full text-sm font-semibold">$1</span></div><div class="definition-content flex-1"><div class="meaning mb-2"><span class="text-gray-900 font-medium">$2</span></div></div></div>'
-   443	                );
-   444	                
-   445	                // 例文のフォーマット
-   446	                formatted = formatted.replace(
-   447	                    /例文:\s*(.+)/g,
-   448	                    '<div class="example bg-gray-50 p-3 rounded-md ml-11 mb-2"><div class="text-gray-700 italic text-sm">$1</div></div>'
-   449	                );
-   450	                
-   451	                // 訳のフォーマット
-   452	                formatted = formatted.replace(
-   453	                    /訳:\s*(.+)/g,
-   454	                    '<div class="translation ml-11 mb-3"><div class="text-gray-600 text-sm"><span class="text-blue-500">→</span> $1</div></div>'
-   455	                );
-   456	                
-   457	                // その他の情報
-   458	                formatted = formatted.replace(
-   459	                    /(語源|類義語|対義語|コロケーション):\s*(.+)/g,
-   460	                    '<div class="info-item p-3 bg-gray-50 rounded mb-3"><div class="font-medium text-gray-700 mb-1">$1</div><div class="text-sm text-gray-600">$2</div></div>'
-   461	                );
-   462	                
-   463	                // 改行をHTMLに変換
-   464	                formatted = formatted.replace(/\n/g, '<br>');
-   465	                
-   466	                return formatted;
-   467	            }
-   468	            
-   469	            speakWord(word) {
-   470	                if ('speechSynthesis' in window) {
-   471	                    window.speechSynthesis.cancel();
-   472	                    const utterance = new SpeechSynthesisUtterance(word);
-   473	                    utterance.lang = 'en-US';
-   474	                    utterance.rate = 0.8;
-   475	                    window.speechSynthesis.speak(utterance);
-   476	                } else {
-   477	                    alert('お使いのブラウザは音声合成機能をサポートしていません。');
-   478	                }
-   479	            }
-   480	            
-   481	            closeDictionaryPopup() {
-   482	                this.dictionaryPopup?.classList.add('hidden');
-   483	            }
-   484	            
-   485	            copyToClipboard() {
-   486	                if (!this.currentText) return;
-   487	                navigator.clipboard.writeText(this.currentText).then(() => {
-   488	                    if (this.copyTextBtn) {
-   489	                        const originalText = this.copyTextBtn.textContent;
-   490	                        this.copyTextBtn.textContent = '✅ コピーしました！';
-   491	                        this.copyTextBtn.classList.add('bg-green-500');
-   492	                        this.copyTextBtn.classList.remove('bg-blue-500');
-   493	                        setTimeout(() => {
-   494	                            this.copyTextBtn.textContent = originalText;
-   495	                            this.copyTextBtn.classList.remove('bg-green-500');
-   496	                            this.copyTextBtn.classList.add('bg-blue-500');
-   497	                        }, 2000);
-   498	                    }
-   499	                });
-   500	            }
-   501	            
-   502	            showProgress(message) {
-   503	                this.progressSection?.classList.remove('hidden');
-   504	                this.updateProgress(0, message);
-   505	            }
-   506	            
-   507	            updateProgress(percent, message) {
-   508	                if (this.progressBar) this.progressBar.style.width = `${percent}%`;
-   509	                if (this.progressText) this.progressText.textContent = message;
-   510	            }
-   511	            
-   512	            hideProgress() {
-   513	                this.progressSection?.classList.add('hidden');
-   514	            }
-   515	        }
-   516	        
-   517	        // アプリケーション初期化
-   518	        document.addEventListener('DOMContentLoaded', () => {
-   519	            const app = new DictionaryApp();
-   520	            window.dictionaryApp = app;
-   521	            
-   522	            // 音声合成の初期化
-   523	            if ('speechSynthesis' in window) {
-   524	                window.speechSynthesis.getVoices();
-   525	            }
-   526	        });
-   527	    </script>
-   528	</body>
-   529	</html>
+  <!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英語辞書アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .clickable-word { 
+            cursor: pointer; 
+            color: blue; 
+            text-decoration: underline;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .clickable-word:hover { 
+            background-color: yellow; 
+        }
+        #dictionary-popup {
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="max-w-4xl mx-auto p-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">
+            <i class="fas fa-book mr-2"></i>
+            英語辞書アプリ
+        </h1>
+
+        <!-- タブメニュー -->
+        <div class="flex border-b mb-6">
+            <button id="file-tab" class="px-4 py-2 border-b-2 border-blue-500 text-blue-600 bg-blue-50 font-medium">
+                <i class="fas fa-upload mr-2"></i>ファイル
+            </button>
+            <button id="text-tab" class="px-4 py-2 border-b-2 border-transparent text-gray-500 font-medium">
+                <i class="fas fa-edit mr-2"></i>テキスト
+            </button>
+        </div>
+
+        <!-- ファイル入力エリア -->
+        <div id="file-input-area" class="mb-6">
+            <!-- スマホ用ボタン -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <button id="camera-btn" class="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-lg transition-colors font-medium flex items-center justify-center space-x-2">
+                    <i class="fas fa-camera text-xl"></i>
+                    <span>カメラで撮影</span>
+                </button>
+                <button id="gallery-btn" class="bg-green-500 hover:bg-green-600 text-white p-4 rounded-lg transition-colors font-medium flex items-center justify-center space-x-2">
+                    <i class="fas fa-images text-xl"></i>
+                    <span>写真を選択</span>
+                </button>
+            </div>
+            
+            <!-- PC用ドラッグ&ドロップエリア -->
+            <div id="upload-area" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-3"></i>
+                <p class="text-base text-gray-600 mb-2">ファイルをドロップするかクリック</p>
+                <p class="text-sm text-gray-500">対応形式: PDF, PNG, JPG, JPEG</p>
+            </div>
+            
+            <!-- 隠された入力要素 -->
+            <input type="file" id="file-input" class="hidden" accept=".pdf,.png,.jpg,.jpeg">
+            <input type="file" id="camera-input" class="hidden" accept="image/*" capture="environment">
+            <input type="file" id="gallery-input" class="hidden" accept="image/*">
+        </div>
+
+        <!-- テキスト入力エリア -->
+        <div id="text-input-area" class="mb-6 hidden">
+            <div class="bg-white rounded-lg shadow p-6">
+                <label for="text-area" class="block text-lg font-medium text-gray-700 mb-3">
+                    <i class="fas fa-keyboard mr-2"></i>英語テキストを貼り付けてください
+                </label>
+                <textarea 
+                    id="text-area" 
+                    class="w-full h-40 p-3 border border-gray-300 rounded-md resize-vertical focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="ここに英語テキストを貼り付けるか、直接入力してください...&#10;&#10;例：&#10;Artificial Intelligence (AI) has become one of the most transformative technologies of our time."
+                ></textarea>
+                <div class="flex gap-3 mt-4">
+                    <button id="process-text-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors font-medium">
+                        <i class="fas fa-play mr-2"></i>テキストを処理
+                    </button>
+                    <button id="clear-text-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors font-medium">
+                        <i class="fas fa-trash mr-2"></i>クリア
+                    </button>
+                    <button id="sample-text-btn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-md transition-colors font-medium">
+                        <i class="fas fa-file-alt mr-2"></i>サンプルテキスト
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- プログレスセクション -->
+        <div id="progress-section" class="mb-6 hidden">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center mb-3">
+                    <i class="fas fa-cog fa-spin text-blue-500 mr-3"></i>
+                    <span id="progress-text" class="text-lg font-medium">処理中...</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="progress-bar" class="bg-blue-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- テキスト表示セクション -->
+        <div id="text-section" class="hidden">
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-xl font-bold text-gray-800">
+                            <i class="fas fa-file-text mr-2"></i>抽出されたテキスト
+                        </h2>
+                        <button id="copy-text-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium">
+                            <i class="fas fa-copy mr-2"></i>テキストをコピー
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div id="extracted-text" class="text-gray-700 leading-relaxed whitespace-pre-wrap"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 辞書ポップアップ -->
+    <div id="dictionary-popup" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div class="flex justify-between items-center p-6 border-b">
+                <h3 id="popup-word" class="text-2xl font-bold text-gray-800"></h3>
+                <button id="close-popup" class="text-gray-500 hover:text-gray-700 text-3xl font-bold">&times;</button>
+            </div>
+            <div id="popup-content" class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                <!-- 辞書内容がここに表示される -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Gemini API Key - 実際のアプリでは環境変数から取得
+        const GEMINI_API_KEY = 'AIzaSyDmc8isiXiQf9fZaO71l42Fte_2NPZXLG8';
+        
+        // 辞書アプリのメイン機能
+        class DictionaryApp {
+            constructor() {
+                this.currentText = '';
+                this.initializeElements();
+                this.setupEventListeners();
+                
+                if (window.pdfjsLib) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+            }
+            
+            initializeElements() {
+                this.uploadArea = document.getElementById('upload-area');
+                this.fileInput = document.getElementById('file-input');
+                this.cameraBtn = document.getElementById('camera-btn');
+                this.galleryBtn = document.getElementById('gallery-btn');
+                this.cameraInput = document.getElementById('camera-input');
+                this.galleryInput = document.getElementById('gallery-input');
+                this.fileTab = document.getElementById('file-tab');
+                this.textTab = document.getElementById('text-tab');
+                this.fileInputArea = document.getElementById('file-input-area');
+                this.textInputArea = document.getElementById('text-input-area');
+                this.textArea = document.getElementById('text-area');
+                this.processTextBtn = document.getElementById('process-text-btn');
+                this.clearTextBtn = document.getElementById('clear-text-btn');
+                this.sampleTextBtn = document.getElementById('sample-text-btn');
+                this.progressSection = document.getElementById('progress-section');
+                this.progressBar = document.getElementById('progress-bar');
+                this.progressText = document.getElementById('progress-text');
+                this.textSection = document.getElementById('text-section');
+                this.extractedText = document.getElementById('extracted-text');
+                this.copyTextBtn = document.getElementById('copy-text-btn');
+                this.dictionaryPopup = document.getElementById('dictionary-popup');
+                this.popupWord = document.getElementById('popup-word');
+                this.popupContent = document.getElementById('popup-content');
+                this.closePopup = document.getElementById('close-popup');
+            }
+
+            setupEventListeners() {
+                // タブ切り替え
+                this.fileTab?.addEventListener('click', () => this.switchToFileMode());
+                this.textTab?.addEventListener('click', () => this.switchToTextMode());
+                
+                // スマホ用ファイル入力
+                this.cameraBtn?.addEventListener('click', () => this.openCamera());
+                this.galleryBtn?.addEventListener('click', () => this.openGallery());
+                this.cameraInput?.addEventListener('change', (e) => this.handleFileSelect(e));
+                this.galleryInput?.addEventListener('change', (e) => this.handleFileSelect(e));
+                
+                // PC用ファイル入力
+                this.uploadArea?.addEventListener('click', () => this.fileInput?.click());
+                this.fileInput?.addEventListener('change', (e) => this.handleFileSelect(e));
+                
+                // テキスト処理
+                this.processTextBtn?.addEventListener('click', () => this.processInputText());
+                this.clearTextBtn?.addEventListener('click', () => this.clearTextArea());
+                this.sampleTextBtn?.addEventListener('click', () => this.loadSampleText());
+                
+                // ポップアップ
+                this.closePopup?.addEventListener('click', () => this.closeDictionaryPopup());
+                this.dictionaryPopup?.addEventListener('click', (e) => {
+                    if (e.target === this.dictionaryPopup) this.closeDictionaryPopup();
+                });
+                
+                // ESCキー
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') this.closeDictionaryPopup();
+                });
+                
+                // 単語クリック（イベント委譲）
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('clickable-word')) {
+                        const word = e.target.getAttribute('data-word');
+                        if (word) this.showDictionary(word);
+                    }
+                });
+                
+                // コピー機能
+                this.copyTextBtn?.addEventListener('click', () => this.copyToClipboard());
+            }
+            
+            switchToFileMode() {
+                this.fileTab.classList.add('border-blue-500', 'text-blue-600', 'bg-blue-50');
+                this.fileTab.classList.remove('border-transparent', 'text-gray-500');
+                this.textTab.classList.remove('border-blue-500', 'text-blue-600', 'bg-blue-50');
+                this.textTab.classList.add('border-transparent', 'text-gray-500');
+                this.fileInputArea.classList.remove('hidden');
+                this.textInputArea.classList.add('hidden');
+            }
+            
+            switchToTextMode() {
+                this.textTab.classList.add('border-blue-500', 'text-blue-600', 'bg-blue-50');
+                this.textTab.classList.remove('border-transparent', 'text-gray-500');
+                this.fileTab.classList.remove('border-blue-500', 'text-blue-600', 'bg-blue-50');
+                this.fileTab.classList.add('border-transparent', 'text-gray-500');
+                this.textInputArea.classList.remove('hidden');
+                this.fileInputArea.classList.add('hidden');
+                setTimeout(() => this.textArea?.focus(), 100);
+            }
+            
+            processInputText() {
+                const inputText = this.textArea?.value?.trim();
+                if (!inputText) {
+                    alert('テキストを入力してください。');
+                    return;
+                }
+                this.showProgress('テキストを処理中...');
+                setTimeout(() => {
+                    this.displayExtractedText(inputText);
+                }, 500);
+            }
+            
+            clearTextArea() {
+                if (this.textArea) {
+                    this.textArea.value = '';
+                    this.textArea.focus();
+                }
+                this.textSection?.classList.add('hidden');
+                this.currentText = '';
+            }
+            
+            loadSampleText() {
+                const sampleText = `Artificial Intelligence (AI) has become one of the most transformative technologies of our time. Machine learning algorithms can analyze vast amounts of data to identify patterns and make predictions. Natural language processing enables computers to understand and generate human language.
+
+The applications of AI are diverse and growing rapidly. In healthcare, AI helps doctors diagnose diseases more accurately. In transportation, autonomous vehicles use AI to navigate safely. However, the development of AI also raises important ethical questions about privacy, bias, and transparency.`;
+
+                if (this.textArea) {
+                    this.textArea.value = sampleText;
+                    if (confirm('サンプルテキストを読み込みました。すぐに処理を開始しますか？')) {
+                        this.processInputText();
+                    }
+                }
+            }
+            
+            openCamera() {
+                this.cameraInput?.click();
+            }
+            
+            openGallery() {
+                this.galleryInput?.click();
+            }
+            
+            handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                this.showProgress('ファイルを処理中...');
+                
+                // 画像ファイルの場合はOCR処理（簡易版）
+                if (file.type.startsWith('image/')) {
+                    this.processImageFile(file);
+                } else {
+                    // PDFファイルなど
+                    alert('現在、画像ファイル（PNG, JPG, JPEG）のみ対応しています。');
+                    this.hideProgress();
+                }
+            }
+            
+            processImageFile(file) {
+                // 簡易OCR処理（実際のアプリではTesseract.jsなどを使用）
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // ここでは簡易的にサンプルテキストを表示
+                    // 実際の実装ではOCRライブラリを使用
+                    setTimeout(() => {
+                        const sampleText = "This is a sample text extracted from the image. Machine learning and artificial intelligence are transformative technologies.";
+                        this.displayExtractedText(sampleText);
+                    }, 2000);
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            displayExtractedText(text) {
+                this.currentText = text;
+                const processedText = this.makeWordsClickable(text);
+                if (this.extractedText) {
+                    this.extractedText.innerHTML = processedText;
+                }
+                this.textSection?.classList.remove('hidden');
+                this.updateProgress(100, '完了！');
+                setTimeout(() => this.hideProgress(), 1000);
+            }
+            
+            makeWordsClickable(text) {
+                const wordPattern = /\b[a-zA-Z]{2,}\b/g;
+                return text.replace(wordPattern, (word) => {
+                    return `<span class="clickable-word" data-word="${word.toLowerCase()}">${word}</span>`;
+                });
+            }
+            
+            async showDictionary(word) {
+                if (!this.dictionaryPopup || !this.popupWord || !this.popupContent) return;
+                
+                this.popupWord.textContent = word;
+                this.popupContent.innerHTML = '<div class="flex justify-center p-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
+                this.dictionaryPopup.classList.remove('hidden');
+                
+                try {
+                    const prompt = `英単語「${word}」の辞書情報を以下の形式で出力してください：
+
+発音記号: [IPA発音記号]
+
+【名詞】（該当する場合のみ）
+1. 意味1の日本語訳
+   例文: English example sentence.
+   訳: 日本語訳
+
+【動詞】（該当する場合のみ）
+1. 動詞の意味の日本語訳
+   例文: Verb example sentence.
+   訳: 日本語訳
+
+【形容詞】（該当する場合のみ）
+1. 形容詞の意味の日本語訳
+   例文: Adjective example sentence.
+   訳: 日本語訳
+
+語源: 単語の語源
+類義語: synonym1, synonym2
+対義語: antonym1, antonym2
+
+辞書らしく簡潔で正確な情報のみを出力してください。`;
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: {
+                                temperature: 0.7,
+                                topK: 40,
+                                topP: 0.95,
+                                maxOutputTokens: 800
+                            }
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        this.displayDictionary(data.candidates[0].content.parts[0].text, word);
+                    } else {
+                        throw new Error('辞書情報を取得できませんでした');
+                    }
+                } catch (error) {
+                    this.popupContent.innerHTML = `
+                        <div class="text-red-600 p-4">
+                            <p>❌ 辞書情報の取得に失敗しました</p>
+                            <p class="text-sm mt-2">${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            displayDictionary(dictText, word) {
+                const html = `
+                    <div class="dictionary-layout space-y-4">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b-2 border-blue-200">
+                            <h3 class="text-2xl font-bold text-gray-800">${word}</h3>
+                            <button onclick="window.dictionaryApp.speakWord('${word}')" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2">
+                                <span>🔊</span>
+                                <span>音声再生</span>
+                            </button>
+                        </div>
+                        
+                        <div class="dictionary-content">
+                            ${this.formatDictionary(dictText)}
+                        </div>
+                        
+                        <div class="bg-gray-100 rounded p-2 mt-4 text-xs text-gray-600">
+                            🤖 Powered by Gemini AI
+                        </div>
+                    </div>
+                `;
+                
+                this.popupContent.innerHTML = html;
+            }
+            
+            formatDictionary(text) {
+                // 発音記号の抽出
+                let formatted = text.replace(
+                    /発音記号\s*[:：]?\s*\[([^\]]+)\]/g, 
+                    '<div class="pronunciation mb-4 text-center"><span class="text-xl font-mono text-blue-600 bg-blue-50 px-3 py-1 rounded">/$1/</span></div>'
+                );
+                
+                // 品詞セクションのフォーマット
+                formatted = formatted.replace(
+                    /【([^】]+)】/g, 
+                    '<div class="pos-header mt-6 mb-3"><span class="inline-block bg-blue-600 text-white px-3 py-1 rounded font-medium text-sm">$1</span></div>'
+                );
+                
+                // 定義番号のフォーマット
+                formatted = formatted.replace(
+                    /^(\d+)\.\s*(.+)$/gm, 
+                    '<div class="definition flex mb-4"><div class="definition-number mr-4"><span class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-600 rounded-full text-sm font-semibold">$1</span></div><div class="definition-content flex-1"><div class="meaning mb-2"><span class="text-gray-900 font-medium">$2</span></div></div></div>'
+                );
+                
+                // 例文のフォーマット
+                formatted = formatted.replace(
+                    /例文:\s*(.+)/g,
+                    '<div class="example bg-gray-50 p-3 rounded-md ml-11 mb-2"><div class="text-gray-700 italic text-sm">$1</div></div>'
+                );
+                
+                // 訳のフォーマット
+                formatted = formatted.replace(
+                    /訳:\s*(.+)/g,
+                    '<div class="translation ml-11 mb-3"><div class="text-gray-600 text-sm"><span class="text-blue-500">→</span> $1</div></div>'
+                );
+                
+                // その他の情報
+                formatted = formatted.replace(
+                    /(語源|類義語|対義語|コロケーション):\s*(.+)/g,
+                    '<div class="info-item p-3 bg-gray-50 rounded mb-3"><div class="font-medium text-gray-700 mb-1">$1</div><div class="text-sm text-gray-600">$2</div></div>'
+                );
+                
+                // 改行をHTMLに変換
+                formatted = formatted.replace(/\n/g, '<br>');
+                
+                return formatted;
+            }
+            
+            speakWord(word) {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(word);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.8;
+                    window.speechSynthesis.speak(utterance);
+                } else {
+                    alert('お使いのブラウザは音声合成機能をサポートしていません。');
+                }
+            }
+            
+            closeDictionaryPopup() {
+                this.dictionaryPopup?.classList.add('hidden');
+            }
+            
+            copyToClipboard() {
+                if (!this.currentText) return;
+                navigator.clipboard.writeText(this.currentText).then(() => {
+                    if (this.copyTextBtn) {
+                        const originalText = this.copyTextBtn.textContent;
+                        this.copyTextBtn.textContent = '✅ コピーしました！';
+                        this.copyTextBtn.classList.add('bg-green-500');
+                        this.copyTextBtn.classList.remove('bg-blue-500');
+                        setTimeout(() => {
+                            this.copyTextBtn.textContent = originalText;
+                            this.copyTextBtn.classList.remove('bg-green-500');
+                            this.copyTextBtn.classList.add('bg-blue-500');
+                        }, 2000);
+                    }
+                });
+            }
+            
+            showProgress(message) {
+                this.progressSection?.classList.remove('hidden');
+                this.updateProgress(0, message);
+            }
+            
+            updateProgress(percent, message) {
+                if (this.progressBar) this.progressBar.style.width = `${percent}%`;
+                if (this.progressText) this.progressText.textContent = message;
+            }
+            
+            hideProgress() {
+                this.progressSection?.classList.add('hidden');
+            }
+        }
+        
+        // アプリケーション初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = new DictionaryApp();
+            window.dictionaryApp = app;
+            
+            // 音声合成の初期化
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.getVoices();
+            }
+        });
+    </script>
+</body>
+</html>
