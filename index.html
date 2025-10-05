@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>英語辞書アプリ</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         .clickable-word { 
@@ -21,7 +21,6 @@
         #dictionary-popup {
             z-index: 9999;
         }
-        /* 辞書表示の改善 */
         .dictionary-content {
             font-size: 16px;
             line-height: 1.4;
@@ -53,7 +52,6 @@
             font-weight: bold;
             color: #1d4ed8;
         }
-        /* 画像プレビュー */
         .image-preview {
             max-width: 100%;
             max-height: 300px;
@@ -98,22 +96,6 @@
                 <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-3"></i>
                 <p class="text-base text-gray-600 mb-2">ファイルをドロップするかクリック</p>
                 <p class="text-sm text-gray-500">対応形式: PNG, JPG, JPEG</p>
-            </div>
-            
-            <!-- 画像プレビューエリア -->
-            <div id="image-preview-area" class="mt-4 hidden">
-                <div class="bg-white rounded-lg shadow p-4">
-                    <h3 class="text-lg font-medium text-gray-700 mb-3">選択された画像:</h3>
-                    <img id="image-preview" class="image-preview mx-auto" />
-                    <div class="mt-3 flex gap-3">
-                        <button id="process-image-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors font-medium">
-                            <i class="fas fa-text-width mr-2"></i>文字を抽出
-                        </button>
-                        <button id="cancel-image-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors font-medium">
-                            <i class="fas fa-times mr-2"></i>キャンセル
-                        </button>
-                    </div>
-                </div>
             </div>
             
             <!-- 隠された入力要素 -->
@@ -206,7 +188,6 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
             constructor() {
                 this.currentText = '';
                 this.currentWord = '';
-                this.currentImageFile = null;
                 this.initializeElements();
                 this.setupEventListeners();
             }
@@ -218,10 +199,6 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
                 this.galleryBtn = document.getElementById('gallery-btn');
                 this.cameraInput = document.getElementById('camera-input');
                 this.galleryInput = document.getElementById('gallery-input');
-                this.imagePreviewArea = document.getElementById('image-preview-area');
-                this.imagePreview = document.getElementById('image-preview');
-                this.processImageBtn = document.getElementById('process-image-btn');
-                this.cancelImageBtn = document.getElementById('cancel-image-btn');
                 this.fileTab = document.getElementById('file-tab');
                 this.textTab = document.getElementById('text-tab');
                 this.fileInputArea = document.getElementById('file-input-area');
@@ -278,14 +255,6 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
                     this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
                 }
                 
-                // 画像処理ボタン
-                if (this.processImageBtn) {
-                    this.processImageBtn.addEventListener('click', () => this.processImageWithOCR());
-                }
-                if (this.cancelImageBtn) {
-                    this.cancelImageBtn.addEventListener('click', () => this.cancelImageSelection());
-                }
-                
                 // テキスト処理
                 if (this.processTextBtn) this.processTextBtn.addEventListener('click', () => this.processInputText());
                 if (this.clearTextBtn) this.clearTextBtn.addEventListener('click', () => this.clearTextArea());
@@ -337,7 +306,7 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
             
             openCamera() {
                 try {
-                    console.log('カメラ機能を開いています...');
+                    console.log('カメラを開いています...');
                     if (this.cameraInput) {
                         this.cameraInput.value = '';
                         this.cameraInput.click();
@@ -352,7 +321,7 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
             
             openGallery() {
                 try {
-                    console.log('ギャラリー機能を開いています...');
+                    console.log('ギャラリーを開いています...');
                     if (this.galleryInput) {
                         this.galleryInput.value = '';
                         this.galleryInput.click();
@@ -367,84 +336,71 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
             
             handleFileSelect(event) {
                 const file = event.target.files[0];
-                if (!file) return;
+                if (!file) {
+                    console.log('ファイルが選択されていません');
+                    return;
+                }
                 
-                console.log('選択されたファイル:', file.name, file.type);
+                console.log('ファイル選択:', file.name, file.type, file.size);
                 
                 if (!file.type.startsWith('image/')) {
                     alert('画像ファイル（PNG, JPG, JPEG）を選択してください。');
                     return;
                 }
                 
-                this.currentImageFile = file;
-                this.showImagePreview(file);
+                // 直接OCR処理を開始
+                this.processImageWithOCR(file);
             }
             
-            showImagePreview(file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    if (this.imagePreview) {
-                        this.imagePreview.src = e.target.result;
-                    }
-                    if (this.imagePreviewArea) {
-                        this.imagePreviewArea.classList.remove('hidden');
-                    }
-                };
-                reader.readAsDataURL(file);
-            }
-            
-            cancelImageSelection() {
-                this.currentImageFile = null;
-                if (this.imagePreviewArea) {
-                    this.imagePreviewArea.classList.add('hidden');
-                }
-                // 入力フィールドをクリア
-                if (this.fileInput) this.fileInput.value = '';
-                if (this.cameraInput) this.cameraInput.value = '';
-                if (this.galleryInput) this.galleryInput.value = '';
-            }
-            
-            async processImageWithOCR() {
-                if (!this.currentImageFile) {
-                    alert('画像が選択されていません。');
-                    return;
-                }
-                
-                this.showProgress('OCRで文字を認識中...', '画像を解析しています...');
+            async processImageWithOCR(file) {
+                console.log('OCR処理開始:', file.name, file.type);
+                this.showProgress('画像から文字を認識中...', 'OCRエンジンを初期化しています...');
                 
                 try {
-                    console.log('OCR処理開始:', this.currentImageFile.name);
+                    // Tesseract.jsが読み込まれているか確認
+                    if (typeof Tesseract === 'undefined') {
+                        throw new Error('OCRライブラリが読み込まれていません');
+                    }
                     
+                    console.log('Tesseract.js バージョン:', Tesseract);
+                    
+                    // OCR処理実行
                     const result = await Tesseract.recognize(
-                        this.currentImageFile,
+                        file,
                         'eng',
                         {
-                            logger: m => {
-                                console.log('OCR進捗:', m);
+                            logger: (m) => {
+                                console.log('OCR ログ:', m);
                                 if (m.status === 'recognizing text') {
                                     const progress = Math.round(m.progress * 100);
-                                    this.updateProgress(progress, 'OCRで文字を認識中...', `処理進捗: ${progress}%`);
+                                    this.updateProgress(progress, '画像から文字を認識中...', `処理進捗: ${progress}%`);
+                                } else if (m.status) {
+                                    this.updateProgress(50, '画像から文字を認識中...', `ステータス: ${m.status}`);
                                 }
                             }
                         }
                     );
                     
-                    console.log('OCR結果:', result.data.text);
+                    console.log('OCR完了 - 信頼度:', result.data.confidence);
+                    console.log('認識テキスト:', result.data.text);
                     
-                    if (result.data.text.trim()) {
-                        this.updateProgress(100, '文字認識完了！', 'テキストを処理しています...');
+                    const extractedText = result.data.text.trim();
+                    
+                    if (extractedText && extractedText.length > 0) {
+                        // 成功
+                        this.updateProgress(100, '文字認識完了！', `信頼度: ${Math.round(result.data.confidence)}%`);
                         setTimeout(() => {
-                            this.displayExtractedText(result.data.text.trim());
-                            this.cancelImageSelection();
-                        }, 500);
+                            this.displayExtractedText(extractedText);
+                        }, 1000);
                     } else {
-                        alert('画像から文字を認識できませんでした。\n画像の品質を確認してください。');
+                        // 文字が認識されなかった
+                        alert('画像から文字を認識できませんでした。\n\n以下を確認してください：\n- 画像が鮮明か\n- 文字が読みやすいか\n- 英語の文字が含まれているか');
                         this.hideProgress();
                     }
                     
                 } catch (error) {
-                    console.error('OCRエラー:', error);
-                    alert('文字認識に失敗しました: ' + error.message);
+                    console.error('OCR処理エラー:', error);
+                    alert(`OCR処理に失敗しました：\n${error.message}\n\n別の画像でお試しください。`);
                     this.hideProgress();
                 }
             }
@@ -590,25 +546,21 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
             }
             
             formatDictionary(text) {
-                // 発音記号の抽出
                 let formatted = text.replace(
                     /発音記号\s*[:：]?\s*\[([^\]]+)\]/g, 
                     '<div class="pronunciation mb-3 text-center"><span class="text-xl font-mono text-blue-600 bg-blue-50 px-3 py-2 rounded">/$1/</span></div>'
                 );
                 
-                // 品詞セクションのフォーマット
                 formatted = formatted.replace(
                     /【([^】]+)】/g, 
                     '<div class="pos-header"><span class="inline-block bg-blue-600 text-white px-3 py-2 rounded font-medium text-lg">$1</span></div>'
                 );
                 
-                // 定義番号のフォーマット
                 formatted = formatted.replace(
                     /^(\d+)\.\s*(.+)$/gm, 
                     '<div class="definition flex"><div class="definition-number mr-3"><span class="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full text-lg font-semibold">$1</span></div><div class="definition-content flex-1"><div class="meaning"><span class="text-gray-900 font-medium text-lg">$2</span></div></div></div>'
                 );
                 
-                // 例文のフォーマット（ターゲット単語を太字にする）
                 formatted = formatted.replace(
                     /例文:\s*(.+)/g,
                     (match, sentence) => {
@@ -619,19 +571,16 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
                     }
                 );
                 
-                // 訳のフォーマット
                 formatted = formatted.replace(
                     /訳:\s*(.+)/g,
                     '<div class="translation"><div class="text-gray-600 text-base"><span class="text-blue-500 text-lg">→</span> $1</div></div>'
                 );
                 
-                // その他の情報
                 formatted = formatted.replace(
                     /(語源|類義語|対義語|コロケーション):\s*(.+)/g,
                     '<div class="info-item bg-gray-50 rounded"><div class="font-medium text-gray-700 text-base mb-1">$1</div><div class="text-gray-600 text-base">$2</div></div>'
                 );
                 
-                // 改行をHTMLに変換
                 formatted = formatted.replace(/\n/g, '<br>');
                 
                 return formatted;
@@ -688,6 +637,15 @@ Artificial Intelligence (AI) has become one of the most transformative technolog
         
         // アプリケーション初期化
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('アプリ初期化開始');
+            
+            // Tesseract.jsが読み込まれているか確認
+            if (typeof Tesseract !== 'undefined') {
+                console.log('✅ Tesseract.js が正常に読み込まれました');
+            } else {
+                console.error('❌ Tesseract.js の読み込みに失敗しました');
+            }
+            
             const app = new DictionaryApp();
             window.dictionaryApp = app;
             
